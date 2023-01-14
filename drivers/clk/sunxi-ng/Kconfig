@@ -22,6 +22,16 @@ config SUN20I_D1_R_CCU
 	default RISCV && ARCH_SUNXI
 	depends on (RISCV && ARCH_SUNXI) || COMPILE_TEST
 
+config SUN20I_T113_CCU
+	tristate "Support for the Allwinner T113 CCU"
+	default ARCH_SUNXI
+	depends on !SUN20I_D1_CCU && (ARCH_SUNXI || COMPILE_TEST)
+
+config SUN20I_T113_R_CCU
+	tristate "Support for the Allwinner T113 PRCM CCU"
+	default ARCH_SUNXI
+	depends on !SUN20I_D1_R_CCU && (ARCH_SUNXI || COMPILE_TEST)
+
 config SUN50I_A64_CCU
 	tristate "Support for the Allwinner A64 CCU"
 	default ARM64 && ARCH_SUNXI
