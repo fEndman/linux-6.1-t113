@@ -950,6 +950,13 @@ config SPI_SUN6I
 	help
 	  This enables using the SPI controller on the Allwinner A31 SoCs.
 
+config SPI_SUNXI
+	tristate "Allwinner D1 SPI Controller"
+	depends on ARCH_SUNXI && OF
+	help
+	  Allwinner Soc SPI controller, present on SUNXI chips.
+	  Include sun8i sun20i sun50i, with DBI.
+
 config SPI_SUNPLUS_SP7021
 	tristate "Sunplus SP7021 SPI controller"
 	depends on SOC_SP7021 || COMPILE_TEST

@@ -139,7 +139,7 @@
 };
 
 &ve {
-	status = "disabled";
+	status = "okay";
 };
 
 // &de {
