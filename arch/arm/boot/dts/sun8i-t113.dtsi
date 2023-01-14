@@ -786,15 +786,13 @@
 			#size-cells = <0>;
 		};
 
-
-
 		spi0: spi@4025000 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "allwinner,sun20i-spi";
 			device_type = "spi0";
 			reg = <0x0 0x04025000 0x0 0x300>;
-			interrupts-extended = <&plic0 31 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_PLL_PERIPH0>, <&ccu CLK_SPI0>, <&ccu CLK_BUS_SPI0>;
 			clock-names = "pll", "mod", "bus";
 			resets = <&ccu RST_BUS_SPI0>;
@@ -812,7 +810,7 @@
 			#size-cells = <0>;
 			compatible = "allwinner,sun20i-spi";
 			reg = <0x0 0x04026000 0x0 0x1000>;
-			interrupts-extended = <&plic0 32 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_PLL_PERIPH0>, <&ccu CLK_SPI1>, <&ccu CLK_BUS_SPI1>;
 			clock-names = "pll", "mod", "bus";
 			resets = <&ccu RST_BUS_SPI1>;
@@ -823,8 +821,6 @@
 			dma-names = "tx", "rx";
 			status = "disabled";
 		};
-
-
 		// spi0: spi@4025000 {
 		// 	compatible = "allwinner,sun20i-d1-spi",
 		// 		     "allwinner,sun50i-r329-spi";

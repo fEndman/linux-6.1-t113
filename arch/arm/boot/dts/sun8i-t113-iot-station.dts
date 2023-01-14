@@ -318,7 +318,7 @@
 	avcc-supply = <&reg_aldo>;
 	hpvcc-supply = <&reg_hpldo>;
 	vdd33-supply = <&reg_vcc_3v3>;    
-	status = "okay";
+	status = "okay"; 
 };
 
 &i2s1 {
