@@ -110,6 +110,15 @@
 		pinctrl-names = "default";
 	};
 
+    lcd_backlight: backlight {
+        compatible = "pwm-backlight";
+        pinctrl-0 = <&pwm2_pe8_pins>;
+        pinctrl-names = "default";
+        pwms = <&pwm 2 2000000 PWM_POLARITY_INVERTED>;
+        brightness-levels = <0 10 20 30 40 50 60 70 80 90>;
+        default-brightness-level = <7>;
+        power-supply = <&reg_vcc_3v3>;
+    };
 };
 
 &reg_aldo {
@@ -204,11 +213,20 @@
         function = "i2s1_dout";
     };
 
+    pwm2_pe8_pins: pwm2-pe8-pins {
+        pins = "PE8";
+        function = "pwm2";
+    };
+
 	// clk_pg11_pin: clk-pg11-pin {
 	// 		pins = "PG11";
 	// 		function = "clk";
 	// };
 
+};
+
+&pwm {
+    status = "okay";
 };
 
 &uart2 {
@@ -268,6 +286,14 @@
 // 		};
 // 	};
 // };
+
+&spi1 {
+	pinctrl-0 = <&spi1_pd_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+    st7735s {
+    }
+};
 
 &mmc0 {
 	bus-width = <4>;
