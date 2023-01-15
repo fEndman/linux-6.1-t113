@@ -110,7 +110,7 @@
 		// assigned-clocks = <&ccu CLK_FANOUT1>;
 		// assigned-clock-rates = <32768>;
 		// pinctrl-0 = <&clk_pg11_pin>;
-		pinctrl-names = "default";
+		// pinctrl-names = "default";
 	};
 
     lcd_backlight: backlight {
@@ -242,7 +242,7 @@
     uart-has-rtscts;
     status = "okay";
 
-	rtl8723bs-bt: bluetooth@1 {
+	rtl8723bs_bt: bluetooth {
         compatible = "realtek,rtl8723bs-bt";
         device-wake-gpios = <&pio 3 0 GPIO_ACTIVE_HIGH>;    /* PD0 */
         enable-gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>;         /* PB7 */
