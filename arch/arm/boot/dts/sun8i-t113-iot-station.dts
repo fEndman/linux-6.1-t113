@@ -5,6 +5,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/pwm/pwm.h>
 #include "sun8i-t113.dtsi"
 
 / {
@@ -291,8 +292,9 @@
 	pinctrl-0 = <&spi1_pd_pins>;
 	pinctrl-names = "default";
 	status = "okay";
-    st7735s {
-    }
+    st7735s@0 {
+		reg = <0>;
+    };
 };
 
 &mmc0 {
