@@ -51,9 +51,11 @@
 #define SPI_ERR(fmt, arg...)	pr_warn("%s()%d - "fmt, __func__, __LINE__, ##arg)
 
 static u32 debug_mask = 1;
-#define dprintk(level_mask, fmt, arg...)				\
-do {									\
-	if (unlikely(debug_mask & level_mask))				\
+#define dprintk(level_mask, fmt, arg...)				    \
+do {									                    \
+    if(unlikely(debug_mask & DEBUG_INIT & level_mask))      \
+		pr_warn(fmt, ##arg);	                                \
+	else if (unlikely(debug_mask & level_mask))				\
 		pr_warn("%s()%d - "fmt, __func__, __LINE__, ##arg);	\
 } while (0)
 

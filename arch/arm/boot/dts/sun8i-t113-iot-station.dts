@@ -6,6 +6,8 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/leds/common.h>
 #include <dt-bindings/pwm/pwm.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/input/gpio-keys.h>
 #include "sun8i-t113.dtsi"
 
 / {
@@ -102,6 +104,34 @@
 	// 	};
 	// };
 
+    wheel_keys: gpio-keys {
+        compatible = "gpio-keys";
+        autorepeat;
+
+        key-up {
+            label = "Wheel Key Up";
+            linux,code = <KEY_UP>;
+            interrupt-parent = <&pio>;
+            interrupts = <4 11 IRQ_TYPE_LEVEL_HIGH>;    /* PE11 */
+        };
+
+        key-down {
+            label = "Wheel Key Down";
+            linux,code = <KEY_DOWN>;
+            interrupt-parent = <&pio>;
+            interrupts = <4 2 IRQ_TYPE_LEVEL_HIGH>;     /* PE2 */
+        };
+
+        key-center {
+            label = "Wheel Key Center";
+            linux,code = <KEY_ENTER>;
+            wakeup-source;
+            wakeup-event-action = <EV_ACT_ASSERTED>;
+            interrupt-parent = <&pio>;
+            interrupts = <6 8 IRQ_TYPE_LEVEL_HIGH>;     /* PG8 */
+        };
+    };
+
 	wifi_pwrseq: wifi-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		// clocks = <&ccu CLK_FANOUT1>;
@@ -189,7 +219,7 @@
 	vcc-pg-supply = <&reg_vcc_3v3>;
 
     uart2_pd1_pins: uart2-pd1-pins {
-        pins = "PD1", "PD2", "PD3", "PD4";
+        pins = "PD1", "PD2";
         function = "uart2";
     };
 
@@ -268,12 +298,13 @@
 	status = "okay";
 	spi_slave_mode = <0>;
 	spi0_cs_number = <1>;
+	spi-supply = <&reg_vcc_3v3>;
 
-    nrf24l01@0 {
-		reg = <0>;
-		spi-max-frequency = <1000000>;
-        status = "okay";
-    };
+    // nrf24l01: nrf24l01@0 {
+	// 	reg = <0>;
+	// 	spi-max-frequency = <1000000>;
+    //     status = "okay";
+    // };
 };
 
 &spi1 {
@@ -283,12 +314,13 @@
 	spi_slave_mode = <0>;
 	spi_dbi_enable = <1>;
 	spi1_cs_number = <1>;
+	spi-supply = <&reg_vcc_3v3>;
 
-    st7735s@0 {
-		reg = <0>;
-		spi-max-frequency = <80000000>;
-        status = "okay";
-    };
+    // st7735s: st7735s@0 {
+	// 	reg = <0>;
+	// 	spi-max-frequency = <80000000>;
+    //     status = "okay";
+    // };
 };
 
 &mmc0 {
