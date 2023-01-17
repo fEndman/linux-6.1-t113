@@ -104,6 +104,31 @@
 	// 	};
 	// };
 
+    // rtl8723bs_codec: bt-codec-bt-sco {
+    //     #sound-dai-cells = <0>;
+    //     compatible = "linux,bt-sco";
+    // };
+
+    // rtl8723bs_pcm: bt-sound {
+	// 	compatible = "simple-audio-card";
+	// 	simple-audio-card,name = "rtl8723bs-bt-pcm";
+	// 	simple-audio-card,format = "dsp_a";
+    //     simple-audio-card,mclk-fs = <384>;
+	// 	simple-audio-card,bitclock-inversion;
+	// 	simple-audio-card,frame-master = <&btcpu>;
+	// 	simple-audio-card,bitclock-master = <&btcpu>;
+
+	// 	btcpu: simple-audio-card,cpu {
+	// 		sound-dai = <&i2s1>;
+	// 		dai-tdm-slot-num = <1>;
+	// 		dai-tdm-slot-width = <16>;
+	// 	};
+
+	// 	simple-audio-card,codec {
+	// 		sound-dai = <&rtl8723bs_codec>;
+	// 	};
+	// };
+
     wheel_keys: gpio-keys {
         compatible = "gpio-keys";
         autorepeat;
@@ -233,18 +258,18 @@
         function = "uart4";
     };
 
-    i2s1_pg12_pins: i2s1-pg12-pins {
-        pins = "PG12", "PG13";
-        function = "i2s1";
-    };
-    i2s1_pg14_pins: i2s1-pg14-pins {
-        pins = "PG14";
-        function = "i2s1_din";
-    };
-    i2s1_pg15_pins: i2s1-pg15-pins {
-        pins = "PG15";
-        function = "i2s1_dout";
-    };
+    // i2s1_pg12_pins: i2s1-pg12-pins {
+    //     pins = "PG12", "PG13";
+    //     function = "i2s1";
+    // };
+    // i2s1_pg14_pins: i2s1-pg14-pins {
+    //     pins = "PG14";
+    //     function = "i2s1_din";
+    // };
+    // i2s1_pg15_pins: i2s1-pg15-pins {
+    //     pins = "PG15";
+    //     function = "i2s1_dout";
+    // };
 
     pwm2_pe8_pins: pwm2-pe8-pins {
         pins = "PE8";
@@ -375,10 +400,12 @@
 	status = "okay"; 
 };
 
-&i2s1 {
-	pinctrl-0 = <&i2s1_pg12_pins>, <&i2s1_pg14_pins>, <&i2s1_pg15_pins>;
-	status = "okay";
-};
+// &i2s1 {
+// 	pinctrl-0 = <&i2s1_pg12_pins>, <&i2s1_pg14_pins>, <&i2s1_pg15_pins>;
+// 	pinctrl-names = "default";
+// 	status = "okay";
+//     sound-dai = <&rtl8723bs_codec>;
+// };
 
 // &usb_otg {
 // 	dr_mode = "otg";
