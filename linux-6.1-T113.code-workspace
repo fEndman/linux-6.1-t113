@@ -6,7 +6,8 @@
     ],
     "settings": {
         "files.associations": {
-            "spi-sunxi.h": "c"
+            "spi-sunxi.h": "c",
+            "pinctrl-sunxi.h": "c"
         }
     }
 }

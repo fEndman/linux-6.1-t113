@@ -12,7 +12,7 @@
 
 / {
 	model = "T113 IoT Station";
-	compatible = "allwinner,sun20i-d1", "allwinner,sun8i";
+	compatible = "fem,t113-iot-station", "allwinner,sun8i-t113";
 
 	aliases {
 		ethernet0 = &rtl8723bs;
@@ -25,7 +25,7 @@
 
 	chosen {
 		stdout-path = "serial4:115200n8";
-		bootargs = "mem=128M root=/dev/mmcblk0p2 rw init=/sbin/init rootwait console=tty0 console=ttyS4,115200";
+		bootargs = "mem=128M cma=32M root=/dev/mmcblk0p2 rw init=/sbin/init rootwait console=tty0 console=ttyS4,115200";
 	};
 
 	reg_vcc: vcc {

@@ -66,6 +66,7 @@ static const char * const sun8i_board_dt_compat[] = {
 	"allwinner,sun8i-r40",
 	"allwinner,sun8i-v3",
 	"allwinner,sun8i-v3s",
+	"allwinner,sun8i-t113",
 	NULL,
 };
 
