@@ -16,12 +16,6 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
-	de: display-engine {
-		compatible = "allwinner,sun20i-d1-display-engine";
-		allwinner,pipelines = <&mixer0>, <&mixer1>;
-		status = "disabled";
-	};
-
 	osc24M: osc24M-clk {
 		compatible = "fixed-clock";
 		clock-frequency = <24000000>;
@@ -29,26 +23,58 @@
 		#clock-cells = <0>;
 	};
 
+	cpu_opp_table: cpu-opp-table {
+		compatible = "allwinner,sun20i-d1-operating-points",
+			     "allwinner,sun50i-h6-operating-points";
+		nvmem-cells = <&cpu_speed_grade>;
+		opp-shared;
+
+		opp-432000000 {
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-hz = /bits/ 64 <432000000>;
+			opp-microvolt = <900000>;
+		};
+		opp-792000000 {
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-hz = /bits/ 64 <792000000>;
+			opp-microvolt = <900000>;
+		};
+		opp-1008000000 {
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-hz = /bits/ 64 <1008000000>;
+			opp-microvolt = <900000>;
+		};
+		opp-1200000000 {
+			clock-latency-ns = <244144>; /* 8 32k periods */
+			opp-hz = /bits/ 64 <1200000000>;
+			opp-microvolt = <900000>;
+		};
+	};
+    
     cpus {
-            enable-method = "allwinner,sun8iw20p1";
-            #address-cells = <1>;
-            #size-cells = <0>;
+        enable-method = "allwinner,sun8iw20p1";
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-            cpu0: cpu@0 {
-                    device_type = "cpu";
-                    compatible = "arm,cortex-a7","arm,armv7";
-                    reg = <0x0>;
-                    clocks = <&ccu CLK_CPUX>;
-                    #cooling-cells = <2>;
-            };
+        cpu0: cpu@0 {
+            device_type = "cpu";
+            compatible = "arm,cortex-a7","arm,armv7";
+            reg = <0x0>;
+            clocks = <&ccu CLK_CPUX>;
+            clock-frequency = <24000000>;
+            operating-points-v2 = <&cpu_opp_table>;
+            #cooling-cells = <2>;
+        };
 
-            cpu1: cpu@1 {
-                    device_type = "cpu";
-                    compatible = "arm,cortex-a7","arm,armv7";
-                    reg = <0x1>;
-                    clocks = <&ccu CLK_CPUX>;
-                    #cooling-cells = <2>;
-            };
+        cpu1: cpu@1 {
+            device_type = "cpu";
+            compatible = "arm,cortex-a7","arm,armv7";
+            reg = <0x1>;
+            clocks = <&ccu CLK_CPUX>;
+            clock-frequency = <24000000>;
+            operating-points-v2 = <&cpu_opp_table>;
+            #cooling-cells = <2>;
+        };
     };
 
 	timer_arch {
@@ -699,6 +725,10 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
+			cpu_speed_grade: cpu-speed-grade@0 {
+				reg = <0x0 0x2>;
+			};
+
 			ths_calib: ths-calib@14 {
 				reg = <0x14 0x4>;
 			};
@@ -1028,6 +1058,12 @@
 				};
 			};
 		};
+
+        de: display-engine {
+            compatible = "allwinner,sun20i-d1-display-engine";
+            allwinner,pipelines = <&mixer0>, <&mixer1>;
+            status = "disabled";
+        };
 
 		dsi: dsi@5450000 {
 			compatible = "allwinner,sun20i-d1-mipi-dsi",
