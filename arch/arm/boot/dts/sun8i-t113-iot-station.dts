@@ -28,6 +28,11 @@
 		bootargs = "mem=128M cma=32M root=/dev/mmcblk0p2 rw init=/sbin/init rootwait console=tty0 console=ttyS4,115200";
 	};
 
+    memory@40000000 {
+		device_type = "memory";
+		reg = <0x40000000 0x8000000>;   /* SIP 128MB */
+    };
+    
 	reg_vcc: vcc {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc";
