@@ -7,7 +7,11 @@
     "settings": {
         "files.associations": {
             "spi-sunxi.h": "c",
-            "pinctrl-sunxi.h": "c"
+            "pinctrl-sunxi.h": "c",
+            "thermal.h": "c",
+            "thermal_core.h": "c",
+            "thermal_hwmon.h": "c",
+            "bitmap.h": "c"
         }
     }
 }

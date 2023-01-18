@@ -217,6 +217,29 @@ static int sun8i_h3_ths_calibrate(struct ths_device *tmdev,
 	return 0;
 }
 
+static int sun20i_d1_ths_calibrate(struct ths_device *tmdev,
+				   u16 *caldata, int callen)
+{
+	/*
+	 * efuse layout:
+	 *
+	 *	0       16      27      32
+	 *	+-------+-------+-------+
+	 *	|   ?   |calval |   ?   |
+	 *	+-------+-------+-------+
+	 *
+	 */
+	if (!caldata[1] || callen < 2 + 2 * tmdev->chip->sensor_num)
+		return -EINVAL;
+
+    regmap_update_bits(tmdev->regmap,
+                SUN50I_H6_THS_TEMP_CALIB,
+                0xfff ,
+                caldata[1]);
+
+	return 0;
+}
+
 static int sun50i_h6_ths_calibrate(struct ths_device *tmdev,
 				   u16 *caldata, int callen)
 {
@@ -580,12 +603,12 @@ static const struct ths_thermal_chip sun8i_r40_ths = {
 
 static const struct ths_thermal_chip sun20i_d1_ths = {
 	.sensor_num = 1,
-	.offset = 188147,
-	.scale = 672,
+	.offset = 188552,
+	.scale = 673,
 	.has_mod_clk = true,
 	.has_bus_clk_reset = true,
 	.temp_data_base = SUN50I_H6_THS_TEMP_DATA,
-	.calibrate = sun50i_h6_ths_calibrate,
+	.calibrate = sun20i_d1_ths_calibrate,
 	.init = sun50i_h6_thermal_init,
 	.irq_ack = sun50i_h6_irq_ack,
 	.calc_temp = sun8i_ths_calc_temp,
