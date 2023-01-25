@@ -11,7 +11,23 @@
             "thermal.h": "c",
             "thermal_core.h": "c",
             "thermal_hwmon.h": "c",
-            "bitmap.h": "c"
+            "bitmap.h": "c",
+            "drm_format_helper.h": "c",
+            "array": "c",
+            "string": "c",
+            "string_view": "c",
+            "spi.h": "c",
+            "stdarg.h": "c",
+            "mipi_display.h": "c",
+            "drm_gem_framebuffer_helper.h": "c",
+            "random": "c",
+            "drm_gem_atomic_helper.h": "c",
+            "drm_connector.h": "c",
+            "drm_modes.h": "c",
+            "drm_mode_config.h": "c",
+            "initializer_list": "c",
+            "utility": "c",
+            "fstream": "c"
         }
     }
 }

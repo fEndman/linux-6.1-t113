@@ -50,12 +50,12 @@
 /* For debug */
 #define SPI_ERR(fmt, arg...)	pr_warn("%s()%d - "fmt, __func__, __LINE__, ##arg)
 
-static u32 debug_mask = 1;
+static u32 debug_mask = DEBUG_INIT;
 #define dprintk(level_mask, fmt, arg...)				    \
 do {									                    \
     if(unlikely(debug_mask & DEBUG_INIT & level_mask))      \
-		pr_warn(fmt, ##arg);	                                \
-	else if (unlikely(debug_mask & level_mask))				\
+		pr_warn(fmt, ##arg);                                \
+	else if (unlikely(debug_mask & level_mask))             \
 		pr_warn("%s()%d - "fmt, __func__, __LINE__, ##arg);	\
 } while (0)
 
@@ -134,15 +134,33 @@ struct sunxi_spi {
 	int result; /* 0: succeed -1:fail */
 	int task_flag;
 	int dbi_enabled;
+	u32 sample_mode;
+	u32 sample_delay;
 };
 
-void __spi_get_dbi_config(struct spi_device *spi, struct spi_dbi_config *dbi_config)
+int spi_get_dbi_config(const struct spi_device *spi, struct spi_dbi_config *dbi_config)
 {
-	struct sunxi_spi *sspi = spi->master->dev.driver_data;
-	sspi->dbi_config = kzalloc(sizeof(struct spi_dbi_config), GFP_KERNEL);
-	sspi->dbi_config = dbi_config;
+	struct sunxi_spi *sspi = spi_master_get_devdata(spi->master);
+
+	if (!sspi->dbi_enabled)
+		return -EINVAL;
+
+	memcpy(dbi_config, sspi->dbi_config, sizeof(struct spi_dbi_config));
+	return 0;
 }
-EXPORT_SYMBOL_GPL(__spi_get_dbi_config);
+EXPORT_SYMBOL_GPL(spi_get_dbi_config);
+
+int spi_set_dbi_config(struct spi_device *spi, const struct spi_dbi_config *dbi_config)
+{
+	struct sunxi_spi *sspi = spi_master_get_devdata(spi->master);
+
+	if (!sspi->dbi_enabled)
+		return -EINVAL;
+
+	memcpy(sspi->dbi_config, dbi_config, sizeof(struct spi_dbi_config));
+	return 0;
+}
+EXPORT_SYMBOL_GPL(spi_set_dbi_config);
 
 void spi_dump_reg(struct sunxi_spi *sspi, u32 offset, u32 len)
 {
@@ -524,7 +542,8 @@ static void spi_set_clk(u32 spi_clk, u32 ahb_clk, struct sunxi_spi *sspi)
 }
 
 /* delay internal read sample point*/
-static void spi_sample_delay(u32 sdm, u32 sdc, void __iomem *base_addr)
+static void spi_sample_delay(u32 sdm, u32 sdc, u32 sdc1,
+					void __iomem *base_addr)
 {
 	u32 reg_val = readl(base_addr + SPI_TC_REG);
 	u32 org_val = reg_val;
@@ -539,8 +558,61 @@ static void spi_sample_delay(u32 sdm, u32 sdc, void __iomem *base_addr)
 	else
 		reg_val &= ~SPI_TC_SDC;
 
+	if (sdc1)
+		reg_val |= SPI_TC_SDC1;
+	else
+		reg_val &= ~SPI_TC_SDC1;
+
 	if (reg_val != org_val)
 		writel(reg_val, base_addr + SPI_TC_REG);
+}
+
+static void spi_set_sample_mode(unsigned int mode, void __iomem *base_addr)
+{
+	unsigned int sample_mode[7] = {
+		DELAY_NORMAL_SAMPLE, DELAY_0_5_CYCLE_SAMPLE,
+		DELAY_1_CYCLE_SAMPLE, DELAY_1_5_CYCLE_SAMPLE,
+		DELAY_2_CYCLE_SAMPLE, DELAY_2_5_CYCLE_SAMPLE,
+		DELAY_3_CYCLE_SAMPLE
+	};
+	spi_sample_delay((sample_mode[mode] >> DELAY_SDM_POS) & 0xf,
+			(sample_mode[mode] >> DELAY_SDC_POS) & 0xf,
+			(sample_mode[mode] >>  DELAY_SDC1_POS)& 0xf,
+			base_addr);
+}
+
+static void spi_samp_dl_sw_status(unsigned int status, void __iomem *base_addr)
+{
+	unsigned int rval = readl(base_addr + SPI_SAMPLE_DELAY_REG);
+
+	if (status)
+		rval |= SPI_SAMP_DL_SW_EN;
+	else
+		rval &= ~SPI_SAMP_DL_SW_EN;
+
+	writel(rval, base_addr + SPI_SAMPLE_DELAY_REG);
+}
+
+static void spi_samp_mode_enable(unsigned int status, void __iomem *base_addr)
+{
+	unsigned int rval = readl(base_addr + SPI_GC_REG);
+
+	if (status)
+		rval |= SPI_SAMP_MODE_EN;
+	else
+		rval &= ~SPI_SAMP_MODE_EN;
+
+	writel(rval, base_addr + SPI_GC_REG);
+}
+
+static void spi_set_sample_delay(unsigned int sample_delay,
+		void __iomem *base_addr)
+{
+	unsigned int rval = readl(base_addr + SPI_SAMPLE_DELAY_REG)
+					& (~(0x3f << 0));
+
+	rval |= sample_delay;
+	writel(rval, base_addr + SPI_SAMPLE_DELAY_REG);
 }
 
 /* start spi transfer */
@@ -1203,18 +1275,25 @@ static int sunxi_spi_xfer_setup(struct spi_device *spi, struct spi_transfer *t)
 
 	spi_speed_hz  = (t && t->speed_hz) ? t->speed_hz : spi->max_speed_hz;
 
-	if (spi_speed_hz >= SPI_HIGH_FREQUENCY)
-		spi_sample_delay(0, 1, base_addr);
-	else if (spi_speed_hz <= SPI_LOW_FREQUENCY)
-		spi_sample_delay(1, 0, base_addr);
-	else
-		spi_sample_delay(0, 0, base_addr);
+	if (sspi->sample_delay == SAMP_MODE_DL_DEFAULT) {
+		if (spi_speed_hz >= SPI_HIGH_FREQUENCY)
+			spi_sample_delay(0, 1, 0, base_addr);
+		else if (spi_speed_hz <= SPI_LOW_FREQUENCY)
+			spi_sample_delay(1, 0, 0, base_addr);
+		else
+			spi_sample_delay(0, 0, 0, base_addr);
+	} else {
+		spi_samp_mode_enable(1, base_addr);
+		spi_samp_dl_sw_status(1, base_addr);
+		spi_set_sample_mode(sspi->sample_mode, base_addr);
+		spi_set_sample_delay(sspi->sample_delay, base_addr);
+	}
 
-#if IS_ENABLED(CONFIG_EVB_PLATFORM)
+// #if IS_ENABLED(CONFIG_EVB_PLATFORM)
 	spi_set_clk(spi_speed_hz, clk_get_rate(sspi->mclk), sspi);
-#else
-	spi_set_clk(spi_speed_hz, 24000000, sspi);
-#endif
+// #else
+// 	spi_set_clk(spi_speed_hz, 24000000, sspi);
+// #endif
 
 	spi_config_tc(1, spi->mode, sspi->base_addr);
 	return 0;
@@ -1565,8 +1644,10 @@ static int sunxi_spi_transfer_one(struct spi_controller *master,
 
 	/* write 1 to clear 0 */
 	spi_clr_irq_pending(SPI_INT_STA_MASK, base_addr);
+#if IS_ENABLED(CONFIG_DMA_ENGINE)
 	/* disable all DRQ */
 	spi_disable_dma_irq(SPI_FIFO_CTL_DRQEN_MASK, base_addr);
+#endif
 	/* reset tx/rx fifo */
 	//spi_reset_fifo(base_addr);
 
@@ -1575,7 +1656,9 @@ static int sunxi_spi_transfer_one(struct spi_controller *master,
 
 	if (sspi->dbi_enabled) {
 		spi_config_dbi(sspi, spi);
+#if IS_ENABLED(CONFIG_DMA_ENGINE)
 		spi_enable_dbi_dma(base_addr);
+#endif
 	} else {
 		/* reset tx/rx fifo */
 		spi_reset_fifo(base_addr);
@@ -1616,10 +1699,10 @@ static int sunxi_spi_transfer_one(struct spi_controller *master,
 #if IS_ENABLED(CONFIG_DMA_ENGINE)
 	/* release dma resource if necessary */
 	sunxi_spi_release_dma(sspi, t);
-#endif
 
 	if (sspi->dbi_enabled)
 		spi_disable_dbi_dma(base_addr);
+#endif
 
 	if (sspi->mode_type != MODE_TYPE_NULL)
 		sspi->mode_type = MODE_TYPE_NULL;
@@ -1823,7 +1906,9 @@ static int sunxi_spi_slave_cpu_tx_config(struct sunxi_spi *sspi)
 err:
 	spi_clr_irq_pending(SPI_INT_STA_MASK, sspi->base_addr);
 	spi_disable_irq(SPI_INTEN_TC|SPI_INTEN_ERR, sspi->base_addr);
+#if IS_ENABLED(CONFIG_DMA_ENGINE)
 	spi_disable_dma_irq(SPI_FIFO_CTL_DRQEN_MASK, sspi->base_addr);
+#endif
 	spi_reset_fifo(sspi->base_addr);
 	kfree(sspi->slave->data->tx_buf);
 	kfree(sspi->slave->data);
@@ -1885,7 +1970,9 @@ static int sunxi_spi_slave_cpu_rx_config(struct sunxi_spi *sspi)
 err2:
 	spi_clr_irq_pending(SPI_INT_STA_MASK, sspi->base_addr);
 	spi_disable_irq(SPI_INTEN_TC|SPI_INTEN_ERR, sspi->base_addr);
+#if IS_ENABLED(CONFIG_DMA_ENGINE)
 	spi_disable_dma_irq(SPI_FIFO_CTL_DRQEN_MASK, sspi->base_addr);
+#endif
 	spi_reset_fifo(sspi->base_addr);
 	kfree(sspi->slave->data->rx_buf);
 err1:
@@ -1958,7 +2045,9 @@ static int sunxi_spi_slave_task(void *data)
 	while (!kthread_should_stop()) {
 		spi_reset_fifo(sspi->base_addr);
 		spi_clr_irq_pending(SPI_INT_STA_MASK, sspi->base_addr);
+#if IS_ENABLED(CONFIG_DMA_ENGINE)
 		spi_disable_dma_irq(SPI_FIFO_CTL_DRQEN_MASK, sspi->base_addr);
+#endif
 		spi_enable_irq(SPI_INTEN_ERR|SPI_INTEN_RX_RDY, sspi->base_addr);
 		spi_set_rx_trig(HEAD_LEN, sspi->base_addr);
 		spi_set_bc_tc_stc(0, 0, 0, 0, sspi->base_addr);
@@ -2097,6 +2186,19 @@ static int sunxi_spi_resource_get(struct sunxi_spi *sspi)
 		}
 	}
 
+	ret = of_property_read_u32(np, "sample_mode", &sspi->sample_mode);
+	if (ret) {
+		// SPI_ERR("Failed to get sample mode\n");
+		sspi->sample_mode = SAMP_MODE_DL_DEFAULT;
+	}
+	ret = of_property_read_u32(np, "sample_delay", &sspi->sample_delay);
+	if (ret) {
+		// SPI_ERR("Failed to get sample delay\n");
+		sspi->sample_delay = SAMP_MODE_DL_DEFAULT;
+	}
+	dprintk(DEBUG_INFO, "sample_mode:%d sample_delay:%d\n",
+				sspi->sample_mode, sspi->sample_delay);
+
 	return 0;
 }
 
@@ -2221,12 +2323,19 @@ static int sunxi_spi_hw_init(struct sunxi_spi *sspi,
 		spi_config_tc(1, SPI_MODE_0, base_addr);
 		spi_set_clk(sclk_freq_def, sclk_freq, sspi);
 
-		if (sclk_freq_def >= SPI_HIGH_FREQUENCY)
-			spi_sample_delay(0, 1, base_addr);
-		else if (sclk_freq_def <= SPI_LOW_FREQUENCY)
-			spi_sample_delay(1, 0, base_addr);
-		else
-			spi_sample_delay(0, 0, base_addr);
+		if (sspi->sample_delay == SAMP_MODE_DL_DEFAULT) {
+			if (sclk_freq_def >= SPI_HIGH_FREQUENCY)
+				spi_sample_delay(0, 1, 0, base_addr);
+			else if (sclk_freq_def <= SPI_LOW_FREQUENCY)
+				spi_sample_delay(1, 0, 0, base_addr);
+			else
+				spi_sample_delay(0, 0, 0, base_addr);
+		} else {
+			spi_samp_mode_enable(1, base_addr);
+			spi_samp_dl_sw_status(1, base_addr);
+			spi_set_sample_mode(sspi->sample_mode, base_addr);
+			spi_set_sample_delay(sspi->sample_delay, base_addr);
+		}
 	}
 
 	/* reset fifo */
@@ -2457,11 +2566,13 @@ static int sunxi_spi_probe(struct platform_device *pdev)
 				| SPI_RX_DUAL | SPI_RX_QUAD;
 
 	ret = of_property_read_u32(np, "spi_dbi_enable", &sspi->dbi_enabled);
-	if (ret == 0)
-		dprintk(DEBUG_INIT, "[spi%d] SPI DBI INTERFACE\n",
-				sspi->master->bus_num);
-	else
+	if (ret)
 		sspi->dbi_enabled = 0;
+	else
+		dprintk(DEBUG_INIT, "[spi%d] SPI DBI INTERFACE\n", sspi->master->bus_num);
+
+	if (sspi->dbi_enabled)
+		sspi->dbi_config = kzalloc(sizeof(struct spi_dbi_config), GFP_KERNEL);
 
 	snprintf(sspi->dev_name, sizeof(sspi->dev_name), SUNXI_SPI_DEV_NAME"%d", pdev->id);
 
@@ -2549,7 +2660,7 @@ err6:
 		if (!IS_ERR_OR_NULL(slave))
 			kfree(slave);
 err5:
-	sunxi_spi_hw_exit(sspi, pdata);
+	sunxi_spi_hw_exit(sspi, pdev->dev.platform_data);
 
 err4:
 	iounmap(sspi->base_addr);
@@ -2558,10 +2669,12 @@ err3:
 err2:
 	free_irq(sspi->irq, sspi);
 err1:
+	if (sspi->dbi_enabled)
+		kfree(sspi->dbi_config);
 	platform_set_drvdata(pdev, NULL);
 	spi_master_put(master);
 err0:
-	kfree(pdata);
+	kfree(pdev->dev.platform_data);
 
 	return ret;
 }
@@ -2580,19 +2693,25 @@ static int sunxi_spi_remove(struct platform_device *pdev)
 	while (sspi->busy & SPI_BUSY)
 		msleep(10);
 
+	sunxi_spi_remove_sysfs(pdev);
+	spi_unregister_master(master);
+
 	if (sspi->mode)
 		if (!sspi->task_flag)
 			if (!IS_ERR(sspi->task))
 				kthread_stop(sspi->task);
 
-	sunxi_spi_remove_sysfs(pdev);
 	sunxi_spi_hw_exit(sspi, pdev->dev.platform_data);
 	iounmap(sspi->base_addr);
+
 	mem_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (mem_res != NULL)
 		release_mem_region(mem_res->start, resource_size(mem_res));
 	free_irq(sspi->irq, sspi);
-	spi_unregister_master(master);
+
+	if (sspi->dbi_enabled)
+		kfree(sspi->dbi_config);
+
 	platform_set_drvdata(pdev, NULL);
 	spi_master_put(master);
 	kfree(pdev->dev.platform_data);

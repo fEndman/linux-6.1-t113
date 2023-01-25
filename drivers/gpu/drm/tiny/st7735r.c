@@ -152,6 +152,12 @@ static const struct st7735r_cfg rh128128t_cfg = {
 	.rgb		= true,
 };
 
+static const struct st7735r_cfg tft18019_cfg = {
+	.mode		= { DRM_SIMPLE_MODE(128, 160, 28, 35) },
+	.left_offset    = 1,
+	.top_offset = 2,
+};
+
 DEFINE_DRM_GEM_DMA_FOPS(st7735r_fops);
 
 static const struct drm_driver st7735r_driver = {
@@ -169,6 +175,7 @@ static const struct drm_driver st7735r_driver = {
 static const struct of_device_id st7735r_of_match[] = {
 	{ .compatible = "jianda,jd-t18003-t01", .data = &jd_t18003_t01_cfg },
 	{ .compatible = "okaya,rh128128t", .data = &rh128128t_cfg },
+	{ .compatible = "yyh,tft18019", .data = &tft18019_cfg },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, st7735r_of_match);
