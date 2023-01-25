@@ -46,6 +46,7 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		vin-supply = <&reg_vcc>;
+		regulator-always-on;
 	};
 
 	reg_vcc_3v3: vcc-3v3 {
@@ -348,7 +349,7 @@
 	pinctrl-names = "default";
 	status = "okay";
 	spi_slave_mode = <0>;
-	spi_dbi_enable = <0>;
+	// spi_dbi_enable = <0>;
 	spi1_cs_number = <1>;
 	spi-supply = <&reg_vcc_3v3>;
 
@@ -422,42 +423,40 @@
 //     sound-dai = <&rtl8723bs_codec>;
 // };
 
-// &usb_otg {
-// 	dr_mode = "otg";
+// &dmic {
 // 	status = "okay";
 // };
+
+&usb_otg {
+    dr_mode = "peripheral";
+	status = "okay";
+};
 
 &ehci0 {
 	status = "okay";
 };
 
-// &dmic {
-// 	status = "okay";
-// };
-
-// &ehci1 {
-// 	status = "okay";
-// };
-
+&ehci1 {
+	status = "okay";
+};
 
 &ohci0 {
 	status = "okay";
 };
 
-// &ohci1 {
-// 	status = "okay";
-// };
-
-
-&ths {
+&ohci1 {
 	status = "okay";
-	vref-supply = <&reg_aldo>;
 };
 
 &usbphy {
 	usb0_vbus-supply = <&reg_usbvbus>;
 	usb1_vbus-supply = <&reg_usbvbus>;
 	status = "okay";
+};
+
+&ths {
+	status = "okay";
+	vref-supply = <&reg_aldo>;
 };
 
 // &mdio {
