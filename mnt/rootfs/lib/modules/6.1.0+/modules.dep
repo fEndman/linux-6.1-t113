@@ -1,0 +1,6 @@
+kernel/lib/crypto/libarc4.ko:
+kernel/drivers/bluetooth/hci_uart.ko: kernel/drivers/bluetooth/btrtl.ko
+kernel/drivers/bluetooth/btrtl.ko:
+kernel/drivers/staging/rtl8723bs/r8723bs.ko: kernel/lib/crypto/libarc4.ko kernel/net/wireless/cfg80211.ko
+kernel/net/wireless/cfg80211.ko:
+kernel/net/mac80211/mac80211.ko: kernel/lib/crypto/libarc4.ko kernel/net/wireless/cfg80211.ko

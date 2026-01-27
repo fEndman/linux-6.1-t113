@@ -245,7 +245,7 @@ static int sun20i_codec_startup(struct snd_pcm_substream *substream,
 
     /* PA GPIO */
     struct sun20i_codec *codec = snd_soc_dai_get_drvdata(dai);
-	if (!IS_ERR(codec->pa_gpios) && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	if (codec->pa_gpios && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		unsigned long *values;
 		int nvalues = codec->pa_gpios->ndescs;
         values = bitmap_alloc(nvalues, GFP_KERNEL);
@@ -271,7 +271,7 @@ static void sun20i_codec_shutdown(struct snd_pcm_substream *substream,
 {
     /* PA GPIO */
     struct sun20i_codec *codec = snd_soc_dai_get_drvdata(dai);
-	if (!IS_ERR(codec->pa_gpios)) {
+	if (codec->pa_gpios) {
 		unsigned long *values;
 		int nvalues = codec->pa_gpios->ndescs;
         values = bitmap_alloc(nvalues, GFP_KERNEL);

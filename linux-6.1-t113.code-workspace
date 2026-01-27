@@ -27,7 +27,9 @@
             "drm_mode_config.h": "c",
             "initializer_list": "c",
             "utility": "c",
-            "fstream": "c"
+            "fstream": "c",
+            "spi-slave-protocol.h": "c",
+            "dma-mapping.h": "c"
         }
     }
 }
