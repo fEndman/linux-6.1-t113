@@ -25,7 +25,7 @@
 
 	chosen {
 		stdout-path = "serial4:115200n8";
-		bootargs = "mem=128M cma=32M root=/dev/mmcblk0p2 rw init=/sbin/init rootwait console=tty0 console=ttyS4,115200";
+		bootargs = "mem=128M cma=48M root=/dev/mmcblk0p2 rw init=/sbin/init rootwait console=tty0 console=ttyS4,115200 loglevel=4";
 	};
 
     memory@40000000 {
@@ -411,8 +411,8 @@
         "Headphone", "Amplifier In";
         // "Microphone", "Headset Microphone",
         // "Headphone", "Headphone Jack";
-    /* PA GPIO */
-    allwinner,pa-gpios = <&pio 6 9 GPIO_ACTIVE_LOW>;
+    /* PA enable GPIO */
+    pa-enable-gpios = <&pio 6 9 GPIO_ACTIVE_LOW>;
 	avcc-supply = <&reg_aldo>;
 	hpvcc-supply = <&reg_hpldo>;
 	vdd33-supply = <&reg_vcc_3v3>;    

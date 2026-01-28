@@ -198,7 +198,7 @@ struct sun20i_codec {
 	struct reset_control	*reset;
 
     /* PA GPIO*/
-    struct gpio_descs *pa_gpios;
+    struct gpio_descs *pa_enable_gpios;
 };
 
 static int sun20i_codec_dai_probe(struct snd_soc_dai *dai)
@@ -243,16 +243,6 @@ static int sun20i_codec_startup(struct snd_pcm_substream *substream,
 	const struct snd_pcm_hw_constraint_list *list;
 	int ret;
 
-    /* PA GPIO */
-    struct sun20i_codec *codec = snd_soc_dai_get_drvdata(dai);
-	if (codec->pa_gpios && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		unsigned long *values;
-		int nvalues = codec->pa_gpios->ndescs;
-        values = bitmap_alloc(nvalues, GFP_KERNEL);
-        bitmap_fill(values, nvalues);
-        gpiod_set_array_value_cansleep(nvalues, codec->pa_gpios->desc, codec->pa_gpios->info, values);
-    }
-
 	list = &sun20i_codec_rate_lists[substream->stream];
 	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
 					 SNDRV_PCM_HW_PARAM_RATE, list);
@@ -269,16 +259,6 @@ static int sun20i_codec_startup(struct snd_pcm_substream *substream,
 static void sun20i_codec_shutdown(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
-    /* PA GPIO */
-    struct sun20i_codec *codec = snd_soc_dai_get_drvdata(dai);
-	if (codec->pa_gpios) {
-		unsigned long *values;
-		int nvalues = codec->pa_gpios->ndescs;
-        values = bitmap_alloc(nvalues, GFP_KERNEL);
-        bitmap_zero(values, nvalues);
-        gpiod_set_array_value_cansleep(nvalues, codec->pa_gpios->desc, codec->pa_gpios->info, values);
-    }
-
 	clk_disable_unprepare(sun20i_codec_get_clk(substream, dai));
 }
 
@@ -588,6 +568,59 @@ static const struct snd_kcontrol_new sun20i_codec_adc3_mixer_controls[] = {
 // 			    SUN20I_CODEC_ADC3_ADC3_PGA_GAIN,
 // 			    0x1f, 0, sun20i_codec_pga_vol_scale);
 
+static int sun20i_codec_pa_event(struct snd_soc_dapm_widget *w, struct snd_kcontrol *kcontrol, int event)
+{
+    struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
+    struct sun20i_codec *codec = snd_soc_component_get_drvdata(component);
+    int nvalues;
+    unsigned long *values;
+    int ret = 0;
+
+    if (!codec->pa_enable_gpios)
+        return 0;
+
+    nvalues = codec->pa_enable_gpios->ndescs;
+
+    switch (event) {
+    case SND_SOC_DAPM_PRE_PMU:
+        values = bitmap_alloc(nvalues, GFP_KERNEL);
+        if (!values) {
+            dev_err(component->dev, "Failed to allocate bitmap for PA enable\n");
+            return -ENOMEM;
+        }
+        bitmap_fill(values, nvalues);
+        ret = gpiod_set_array_value_cansleep(nvalues, codec->pa_enable_gpios->desc, codec->pa_enable_gpios->info, values);
+        kfree(values);
+        if (ret) {
+            dev_err(component->dev, "Failed to enable PA GPIOs: %d\n", ret);
+            return ret;
+        }
+        dev_info(component->dev, "PA GPIOs enabled (PRE_PMU)\n");
+        break;
+
+    case SND_SOC_DAPM_POST_PMD:
+        values = bitmap_alloc(nvalues, GFP_KERNEL);
+        if (!values) {
+            dev_err(component->dev, "Failed to allocate bitmap for PA disable\n");
+            return -ENOMEM;
+        }
+        bitmap_zero(values, nvalues);
+        ret = gpiod_set_array_value_cansleep(nvalues, codec->pa_enable_gpios->desc, codec->pa_enable_gpios->info, values);
+        kfree(values);
+        if (ret) {
+            dev_err(component->dev, "Failed to disable PA GPIOs: %d\n", ret);
+            return ret;
+        }
+        dev_info(component->dev, "PA GPIOs disabled (POST_PMD)\n");
+        break;
+
+    default:
+        break;
+    }
+
+    return ret;
+}
+
 static const struct snd_soc_dapm_widget sun20i_codec_widgets[] = {
 	/* Playback */
 	SND_SOC_DAPM_OUTPUT("LINEOUTL"),
@@ -612,6 +645,9 @@ static const struct snd_soc_dapm_widget sun20i_codec_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("Headphone Driver",
 			    SUN20I_CODEC_HP2,
 			    SUN20I_CODEC_HP2_HP_DRVEN, 0, NULL, 0),
+
+    SND_SOC_DAPM_SUPPLY("Codec PA", SND_SOC_NOPM, 0, 0, sun20i_codec_pa_event,
+                       SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_DAC("DACL", NULL,
 			 SUN20I_CODEC_DAC,
@@ -722,6 +758,11 @@ static const struct snd_soc_dapm_route sun20i_codec_routes[] = {
 	{ "HPOUTL Switch", NULL, "Headphone Driver" },
 	{ "HPOUTR Switch", NULL, "Headphone Driver" },
 	{ "Headphone Driver", NULL, "hpvcc" },
+
+    { "LINEOUTL Switch", NULL, "Codec PA" },
+    { "LINEOUTR Switch", NULL, "Codec PA" },
+    { "HPOUTL Switch", NULL, "Codec PA" },
+    { "HPOUTR Switch", NULL, "Codec PA" },
 
 	{ "DACL", NULL, "DACL FIFO" },
 	{ "DACR", NULL, "DACR FIFO" },
@@ -994,12 +1035,9 @@ static int sun20i_codec_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, ret, "Failed to register card\n");
 
     /* PA GPIO */
-    codec->pa_gpios = devm_gpiod_get_array_optional(dev, "allwinner,pa", GPIOD_OUT_LOW);
-	if (IS_ERR(codec->pa_gpios))
+    codec->pa_enable_gpios = devm_gpiod_get_array_optional(dev, "pa-enable", GPIOD_OUT_LOW);
+	if (IS_ERR(codec->pa_enable_gpios))
 		return dev_err_probe(dev, ret, "Failed to get pa gpio\n");
-    // for(int i = 0; i < codec->pa_gpios->ndescs; i++){
-    //     gpiod_direction_output(codec->pa_gpios->desc[i], 0);
-    // }
 
 	return 0;
 }
