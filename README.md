@@ -13,6 +13,17 @@
 - **SoC**: Allwinner T113-S3（双核 ARM Cortex-A7）
 - **目标板**: `sun8i-t113-iot-station`
 
+## 编译
+
+### 编译步骤
+```bash
+make t113_iot_station_defconfig
+make -j$(nproc)
+```
+### 输出文件
+- 内核镜像：arch/arm/boot/zImage
+- 设备树：arch/arm/boot/dts/sun8i-t113-iot-station.dtb
+
 ## 已实现功能
 
 ### 基础系统支持
